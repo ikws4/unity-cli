@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-当前开发版本：`0.8.0`
+当前开发版本：`0.8.1`
 
 `unity-cli` 由一个 Go 命令行程序和一个 Unity Editor Connector 包组成。Connector 在本机
 Editor 内启动 HTTP 监听，CLI 自动发现实例并发送命令，不需要额外运行 Python、MCP Server

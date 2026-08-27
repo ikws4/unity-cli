@@ -3,8 +3,8 @@ package cmd
 import "testing"
 
 func TestDefaultVersion(t *testing.T) {
-	if DefaultVersion != "0.8.0" {
-		t.Fatalf("DefaultVersion = %q, want 0.8.0; increment this assertion with each feature", DefaultVersion)
+	if DefaultVersion != "0.8.1" {
+		t.Fatalf("DefaultVersion = %q, want 0.8.1; increment this assertion with each feature", DefaultVersion)
 	}
 }
 

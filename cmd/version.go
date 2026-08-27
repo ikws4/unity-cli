@@ -6,7 +6,7 @@ import (
 )
 
 // DefaultVersion is the source-build version. Increment it with every feature.
-const DefaultVersion = "0.8.0"
+const DefaultVersion = "0.8.1"
 
 type semanticVersion struct {
 	major      int
