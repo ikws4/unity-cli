@@ -255,9 +255,15 @@ echo 'Debug.Log("hello"); return null;' | unity-cli exec
 unity-cli menu "File/Save Project"
 unity-cli menu "Assets/Refresh"
 
+# 默认截取 Game View，并使用 Game View 中配置的分辨率（例如 946x2048）
 unity-cli screenshot
-unity-cli screenshot --view game
-unity-cli screenshot --output_path captures/game.png --width 1920 --height 1080
+unity-cli screenshot --output_path captures/game.png
+
+# 显式覆盖输出尺寸
+unity-cli screenshot --width 1920 --height 1080
+
+# 截取 Scene View；未指定尺寸时使用 1920x1080
+unity-cli screenshot --view scene
 ```
 
 出于安全考虑，`menu` 不允许执行 `File/Quit`。

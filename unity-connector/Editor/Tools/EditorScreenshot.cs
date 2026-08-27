@@ -1,12 +1,13 @@
 using System;
 using System.IO;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 
 namespace UnityCliConnector.Tools
 {
-    [UnityCliTool(Name = "screenshot", Description = "Capture a screenshot of the Unity editor. Views: scene, game.")]
+    [UnityCliTool(Name = "screenshot", Description = "Capture the Game View (default) or Scene View.")]
     public static class EditorScreenshot
     {
         private const int DefaultWidth = 1920;
@@ -14,13 +15,13 @@ namespace UnityCliConnector.Tools
 
         public class Parameters
         {
-            [ToolParameter("View to capture: scene (default), game", Required = false)]
+            [ToolParameter("View to capture: game (default), scene", Required = false)]
             public string View { get; set; }
 
-            [ToolParameter("Override width (default 1920)", Required = false)]
+            [ToolParameter("Override width (default: configured Game View width; scene: 1920)", Required = false)]
             public int Width { get; set; }
 
-            [ToolParameter("Override height (default 1080)", Required = false)]
+            [ToolParameter("Override height (default: configured Game View height; scene: 1080)", Required = false)]
             public int Height { get; set; }
 
             [ToolParameter("Output file path, absolute or relative to project root (default: Screenshots/screenshot.png)", Required = false)]
@@ -33,9 +34,9 @@ namespace UnityCliConnector.Tools
                 @params = new JObject();
 
             var p = new ToolParams(@params);
-            var view = p.Get("view", "scene").ToLowerInvariant();
-            var width = p.GetInt("width", DefaultWidth).Value;
-            var height = p.GetInt("height", DefaultHeight).Value;
+            var view = p.Get("view", "game").ToLowerInvariant();
+            var width = p.GetInt("width");
+            var height = p.GetInt("height");
             var outputPath = ResolveOutputPath(p.Get("output_path"));
 
             try
@@ -47,7 +48,10 @@ namespace UnityCliConnector.Tools
                 switch (view)
                 {
                     case "scene":
-                        return CaptureSceneView(width, height, outputPath);
+                        return CaptureSceneView(
+                            width ?? DefaultWidth,
+                            height ?? DefaultHeight,
+                            outputPath);
                     case "game":
                         return CaptureGameView(width, height, outputPath);
                     default:
@@ -85,7 +89,7 @@ namespace UnityCliConnector.Tools
             return CaptureCamera(camera, width, height, outputPath);
         }
 
-        private static object CaptureGameView(int width, int height, string outputPath)
+        private static object CaptureGameView(int? requestedWidth, int? requestedHeight, string outputPath)
         {
             var camera = Camera.main;
             if (!camera)
@@ -99,11 +103,50 @@ namespace UnityCliConnector.Tools
                     return new ErrorResponse("No camera found in scene.");
             }
 
+            var configuredSize = GetConfiguredGameViewSize();
+            var width = requestedWidth ?? ResolveDimension(configuredSize.x, camera.pixelWidth, DefaultWidth);
+            var height = requestedHeight ?? ResolveDimension(configuredSize.y, camera.pixelHeight, DefaultHeight);
+
             return CaptureCamera(camera, width, height, outputPath);
+        }
+
+        private static Vector2 GetConfiguredGameViewSize()
+        {
+            try
+            {
+                var gameViewType = Type.GetType("UnityEditor.GameView,UnityEditor");
+                var methodFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+                var getTargetSize = gameViewType?.GetMethod("GetMainGameViewTargetSize", methodFlags)
+                    ?? gameViewType?.GetMethod("GetSizeOfMainGameView", methodFlags);
+                var result = getTargetSize?.Invoke(null, null);
+                if (result is Vector2 size)
+                    return size;
+                if (result is Vector2Int intSize)
+                    return new Vector2(intSize.x, intSize.y);
+            }
+            catch
+            {
+                // Older Editor versions can change this internal API; camera dimensions remain usable.
+            }
+
+            return Vector2.zero;
+        }
+
+        private static int ResolveDimension(float configured, int cameraDimension, int fallback)
+        {
+            var configuredDimension = Mathf.RoundToInt(configured);
+            if (configuredDimension > 0)
+                return configuredDimension;
+            if (cameraDimension > 0)
+                return cameraDimension;
+            return fallback;
         }
 
         private static object CaptureCamera(Camera camera, int width, int height, string outputPath)
         {
+            if (width <= 0 || height <= 0)
+                return new ErrorResponse("Screenshot width and height must be greater than zero.");
+
             var previousRT = camera.targetTexture;
             RenderTexture rt = null;
             Texture2D tex = null;

@@ -562,8 +562,8 @@ Menu:
     menu "Assets/Refresh"
 
 Screenshot:
-  screenshot                          Capture scene view (default)
-  screenshot --view game              Capture game view
+  screenshot                          Capture game view at its configured resolution (default)
+  screenshot --view scene             Capture scene view
   screenshot --output_path <path>     Custom output path
 
 Reserialize:
@@ -718,20 +718,22 @@ Note: File/Quit is blocked for safety.
 	case "screenshot":
 		fmt.Print(`Usage: unity-cli screenshot [options]
 
-Capture a screenshot of the Unity editor.
+Capture the Game View (default) or Scene View.
 
 Options:
-  --view <mode>      scene (default), game
-  --width <N>        Image width in pixels (default: 1920)
-  --height <N>       Image height in pixels (default: 1080)
+  --view <mode>      game (default), scene
+  --width <N>        Override image width
+  --height <N>       Override image height
   --output_path <path>  Output path, absolute or relative to project root
                         (default: Screenshots/screenshot.png)
 
+Game View captures use its configured resolution when width/height are omitted.
+Scene View captures default to 1920x1080.
+
 Examples:
   unity-cli screenshot
-  unity-cli screenshot --view game
+  unity-cli screenshot --output_path captures/game.png
   unity-cli screenshot --view scene --width 3840 --height 2160
-  unity-cli screenshot --output_path captures/my_scene.png
 `)
 	case "reserialize":
 		fmt.Print(`Usage: unity-cli reserialize [path...]
