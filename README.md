@@ -212,6 +212,22 @@ unity-cli console --clear
 `exec` 可以访问 `UnityEngine`、`UnityEditor`、项目程序集以及已经加载的其他程序集。
 使用 `return` 返回结果；没有返回值的修改以 `return null;` 结束。
 
+默认导入以下 namespace：
+
+```text
+System
+System.Collections.Generic
+System.IO
+System.Linq
+System.Reflection
+System.Threading.Tasks
+UnityEngine
+UnityEngine.SceneManagement
+UnityEditor
+UnityEditor.SceneManagement
+UnityEditorInternal
+```
+
 ```bash
 unity-cli exec "return Application.dataPath;"
 unity-cli exec "return EditorSceneManager.GetActiveScene().name;"

@@ -543,6 +543,12 @@ Execute C#:
   echo '<code>' | exec          Pipe code via stdin (avoids shell escaping)
   exec "<code>" --usings x,y    Add extra using directives (repeatable)
 
+  Default usings:
+    System, System.Collections.Generic, System.IO, System.Linq,
+    System.Reflection, System.Threading.Tasks, UnityEngine,
+    UnityEngine.SceneManagement, UnityEditor, UnityEditor.SceneManagement,
+    UnityEditorInternal
+
   Examples:
     exec "Time.time"
     exec "GameObject.FindObjectsOfType<Camera>().Length"
