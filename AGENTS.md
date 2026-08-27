@@ -65,12 +65,13 @@ CLI option, command, parameter를 수정하면 관련된 모든 곳을 함께 �
 
 CLI(Go)와 Connector(C#)는 같은 릴리스 버전으로 맞춘다.
 
+- 소스 기본 버전은 `0.8.0`부터 시작한다. 새 기능을 개발할 때마다 기본적으로 patch 버전을 하나 올리고, 호환성 범위가 바뀌면 SemVer에 따라 minor/major를 올린다.
+- 기능 버전 변경은 해당 기능 커밋에 포함하며 `cmd.DefaultVersion`, `unity-connector/package.json`, `unity-connector/Editor/Heartbeat.cs`를 항상 함께 갱신한다.
 - **CLI**: git tag는 `vX.Y.Z`
-- **CLI binary**: `.github/workflows/release.yml`의 `-X main.Version=${VERSION}`로 tag가 주입되고, `main.go`가 `cmd.Version`에 전달한다. 소스 기본값 `dev`는 배포 버전으로 쓰지 않는다.
+- **CLI binary**: 소스 빌드는 `cmd.DefaultVersion`을 사용한다. `.github/workflows/release.yml`은 `-X main.Version=${VERSION}`로 tag를 주입하고, `main.go`가 이를 `cmd.Version`에 전달한다.
 - **Connector**: `unity-connector/package.json` 버전은 `X.Y.Z`
 - **Connector heartbeat**: `unity-connector/Editor/Heartbeat.cs`의 `CONNECTOR_VERSION`도 같은 `X.Y.Z`로 갱신한다.
-- 개발 빌드의 CLI `Version=dev`는 비교 예외지만, 배포 빌드는 항상 Connector 버전과 같아야 한다.
-- Go 코드나 C# 커넥터 코드 중 하나만 바뀌어도, 배포 시에는 tag와 `package.json` 버전을 같은 번호로 갱신한다.
+- `content_embed_test.go`의 버전 일치 테스트를 우회하지 않는다.
 - CLI는 실행 전 Connector heartbeat의 `connectorVersion`을 읽어 버전이 다르거나 없으면 에러를 낸다. 버전 갱신 누락을 정상 동작으로 넘기지 않는다.
 
 ### 작업 마무리 시

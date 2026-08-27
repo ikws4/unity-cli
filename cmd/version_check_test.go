@@ -167,6 +167,28 @@ func TestPrintUpdateNotice_SkipsDevVersion(t *testing.T) {
 	}
 }
 
+func TestPrintUpdateNotice_DoesNotAnnounceOlderRelease(t *testing.T) {
+	path := prepareVersionCheckEnv(t, "0.8.0")
+	fetchLatestReleaseFn = func() (*ghRelease, error) {
+		return &ghRelease{TagName: "v0.3.22"}, nil
+	}
+
+	output := captureStderr(t, func() {
+		printUpdateNotice()
+	})
+
+	if output != "" {
+		t.Fatalf("expected no notice for an older release, got %q", output)
+	}
+	loaded, err := loadCache(path)
+	if err != nil {
+		t.Fatalf("loadCache: %v", err)
+	}
+	if loaded.Outdated {
+		t.Fatalf("older release was cached as an update: %+v", loaded)
+	}
+}
+
 func TestLoadSaveCache(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")

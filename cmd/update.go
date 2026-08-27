@@ -37,7 +37,7 @@ func updateCmd(args []string) error {
 	latest := release.TagName
 	current := Version
 
-	if current == latest {
+	if !isNewerVersion(latest, current) {
 		fmt.Printf("Already up to date (%s)\n", current)
 		return nil
 	}

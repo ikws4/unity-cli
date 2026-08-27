@@ -15,7 +15,7 @@ import (
 	"github.com/ikws4/unity-cli/internal/client"
 )
 
-var Version = "dev"
+var Version = DefaultVersion
 
 var (
 	flagProject               string
@@ -828,8 +828,8 @@ Examples:
 		fmt.Print(`Usage: unity-cli setup
 
 Install or update the Unity CLI Connector dependency in Packages/manifest.json.
-Run this command from the Unity project root. A release build pins the Connector
-to the matching CLI version; a development build uses the repository's default branch.
+Run this command from the Unity project root. The Connector is pinned to the
+matching CLI version.
 
 Example:
   cd /path/to/MyUnityProject

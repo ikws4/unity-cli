@@ -1,6 +1,6 @@
 {
   "name": "com.ikws4.unity-cli-connector",
-  "version": "0.3.22",
+  "version": "0.8.0",
   "displayName": "Unity CLI Connector",
   "description": "HTTP bridge for unity-cli. Receives CLI commands and dispatches to registered tool handlers.",
   "unity": "2022.3",

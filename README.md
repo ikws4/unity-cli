@@ -4,6 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+当前开发版本：`0.8.0`
+
 `unity-cli` 由一个 Go 命令行程序和一个 Unity Editor Connector 包组成。Connector 在本机
 Editor 内启动 HTTP 监听，CLI 自动发现实例并发送命令，不需要额外运行 Python、MCP Server
 或中转进程。
@@ -427,6 +429,10 @@ unity-cli update
 更新命令从 `github.com/ikws4/unity-cli` 的最新 GitHub Release 下载当前平台的二进制。
 
 ## 开发与验证
+
+项目版本从 `0.8.0` 开始。每次新增功能时默认递增 patch 版本，例如 `0.8.0` → `0.8.1`；
+存在兼容性或发布范围变化时按 SemVer 递增 minor 或 major。Go CLI、UPM package 和 Connector
+heartbeat 必须在同一个功能提交中同步更新，测试会校验三处版本一致。
 
 ```bash
 make build

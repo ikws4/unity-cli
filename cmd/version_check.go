@@ -64,7 +64,7 @@ func printUpdateNotice() {
 	cache, _ := loadCache(path)
 	latestNotice := ""
 
-	if cache != nil && cache.Outdated && cache.Latest != "" && cache.Latest != Version {
+	if cache != nil && cache.Outdated && isNewerVersion(cache.Latest, Version) {
 		latestNotice = cache.Latest
 	}
 
@@ -94,7 +94,7 @@ func printUpdateNotice() {
 	nextCache := &versionCache{
 		CheckedAt: now,
 		Latest:    release.TagName,
-		Outdated:  release.TagName != "" && release.TagName != Version,
+		Outdated:  release.TagName != "" && isNewerVersion(release.TagName, Version),
 	}
 	saveCache(path, nextCache)
 

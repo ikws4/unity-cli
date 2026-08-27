@@ -9,7 +9,7 @@ import (
 	"github.com/ikws4/unity-cli/cmd"
 )
 
-var Version = "dev"
+var Version = cmd.DefaultVersion
 
 // Keep agent guidance in lockstep with the binary that exposes the commands.
 //
