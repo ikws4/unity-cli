@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/youngwoocho02/unity-cli/internal/client"
+	"github.com/ikws4/unity-cli/internal/client"
 )
 
 func TestTestCmd_SendsDefaultRunParameters(t *testing.T) {

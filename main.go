@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/youngwoocho02/unity-cli/cmd"
+	"github.com/ikws4/unity-cli/cmd"
 )
 
 var Version = "dev"

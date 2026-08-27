@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="youngwoocho02/unity-cli"
+REPO="ikws4/unity-cli"
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$OS" in

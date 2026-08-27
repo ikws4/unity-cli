@@ -1,395 +1,164 @@
 # unity-cli
 
-[English](README.md) | [Korean](README.ko.md)
-
-> Control Unity Editor from the command line. Built for AI agents, works with anything.
+> 从命令行控制正在运行的 Unity Editor，适合开发者、自动化脚本和 AI Agent。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**No server to run. No config to write. No process to manage. Just type a command.**
+`unity-cli` 由一个 Go 命令行程序和一个 Unity Editor Connector 包组成。Connector 在本机
+Editor 内启动 HTTP 监听，CLI 自动发现实例并发送命令，不需要额外运行 Python、MCP Server
+或中转进程。
 
-## Why this exists
+## 环境要求
 
-I wanted to control Unity from the terminal. The existing MCP-based integrations required Python runtimes, WebSocket relays, JSON-RPC protocol layers, config files, server processes that need to be started and stopped, tool registration ceremonies, and tens of thousands of lines of over-engineered code. All just to send a simple command to Unity.
+- Unity 2022.3 或更高版本
+- 使用源码安装时需要 Go 1.24 或更高版本
+- Connector 使用 Git URL 安装时，本机需要可供 Unity Package Manager 使用的 Git
 
-On top of that, every AI agent that wanted to use it needed its own MCP config and integration setup. The CLI doesn't care — any agent that can run a shell command can use it immediately.
+## 安装 CLI
 
-That felt wrong. If I can `curl` a URL, why do I need all that?
-
-So I built the opposite: a single binary that talks directly to Unity via HTTP. No server to run — the Unity package listens automatically. No config to write — it discovers Unity instances on its own. No tool registration — just call by name. No caching, no protocol layers, no ceremony.
-
-The entire CLI is ~800 lines of Go (plus ~300 lines of help text). The Unity-side connector is ~2,300 lines of C#. It's just a thin layer that lets you control Unity from the shell — nothing more. You install the binary, add the Unity package, and it works.
-
-## Install
-
-Clone the repository and install from the project directory:
+推荐直接安装 Go package：
 
 ```bash
-git clone https://github.com/youngwoocho02/unity-cli.git
+go install github.com/ikws4/unity-cli@latest
+```
+
+如果安装后找不到命令，请确认 Go 的 bin 目录已加入 `PATH`：
+
+```bash
+go env GOBIN GOPATH
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
+也可以克隆源码并使用 Makefile：
+
+```bash
+git clone https://github.com/ikws4/unity-cli.git
 cd unity-cli
 make install
 ```
 
-`make install` uses Go's standard binary directory: `GOBIN` when set, otherwise the first `GOPATH/bin` directory.
-
-To inspect the resolved Go directories:
-
-```bash
-go env GOBIN GOPATH
-```
-
-If the command is not found afterward, add Go's bin directory to `PATH`:
-
-```bash
-export PATH="$(go env GOPATH)/bin:$PATH"
-```
-
-Verify the installation:
-
-```bash
-unity-cli version
-```
-
-To install into a system directory:
+`make install` 优先使用 `GOBIN`，未设置时安装到第一个 `GOPATH/bin`。安装到系统目录：
 
 ```bash
 sudo env GOBIN=/usr/local/bin make install
 ```
 
-### AI Agent Skill
-
-Install the repository's agent skill so agents get the exact `exec` rules before using the CLI:
+macOS 和 Linux 也可以使用安装脚本：
 
 ```bash
-npx skills add ikws4/unity-cli -y -g
+curl -fsSL https://raw.githubusercontent.com/ikws4/unity-cli/main/install.sh | sh
 ```
 
-The same skill is embedded in every CLI binary and can be inspected without Node.js:
+Windows 用户可以使用 `go install`，或从
+[GitHub Releases](https://github.com/ikws4/unity-cli/releases) 下载对应的 `.exe`。
+
+验证安装：
 
 ```bash
-unity-cli skills list
-unity-cli skills read unity-cli
+unity-cli version
 ```
 
-### Update
+## 安装 Unity Connector
 
-```bash
-# Update to the latest version
-unity-cli update
-
-# Check for updates without installing
-unity-cli update --check
-```
-
-## Unity Setup
-
-From the Unity project root, install the Connector dependency with:
+进入 Unity 项目根目录，也就是同时包含 `Assets`、`Packages` 和 `ProjectSettings` 的目录，
+运行：
 
 ```bash
 cd /path/to/MyUnityProject
 unity-cli setup
 ```
 
-The command validates the current directory, then adds the Connector to
-`Packages/manifest.json`. Release builds pin the package to the matching CLI version, and
-re-running the command updates an older entry or leaves an identical entry unchanged.
+`setup` 会检查当前目录并更新 `Packages/manifest.json`：
 
-Alternatively, add the Unity Connector package via **Package Manager → Add package from git URL**:
+- 安装 `com.ikws4.unity-cli-connector`
+- 发布版 CLI 将 Connector 锁定到相同的 Git tag
+- 重复执行时自动更新旧版本，已一致时不改写文件
+- 自动迁移旧的 `com.youngwoocho02.unity-cli-connector` 依赖
 
+也可以在 Unity 的 **Package Manager → Add package from git URL** 中手动添加：
+
+```text
+https://github.com/ikws4/unity-cli.git?path=unity-connector
 ```
-https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
-```
 
-Or add directly to `Packages/manifest.json`:
+或直接修改 `Packages/manifest.json`：
+
 ```json
-"com.youngwoocho02.unity-cli-connector": "https://github.com/youngwoocho02/unity-cli.git?path=unity-connector"
+{
+  "dependencies": {
+    "com.ikws4.unity-cli-connector": "https://github.com/ikws4/unity-cli.git?path=unity-connector"
+  }
+}
 ```
 
-To pin a specific version, append a tag to the URL (e.g. `#v0.2.21`).
+添加完成后打开 Unity，Connector 会自动启动，无需其他配置。
 
-Once added, the Connector starts automatically when Unity opens. No configuration needed.
-The package supports Unity 2022.3 or newer.
+### 推荐的 Editor 设置
 
-### Recommended: Disable Editor Throttling
+Unity 窗口失去焦点时可能降低 Editor 更新频率，导致需要主线程执行的 CLI 命令延迟。
+建议在 **Edit → Preferences → General → Interaction Mode** 中选择 **No Throttling**。
 
-By default, Unity throttles editor updates when the window is unfocused. This can delay CLI commands because Unity API work is dispatched on the Editor main thread.
-
-To fix this, go to **Edit → Preferences → General → Interaction Mode** and set it to **No Throttling**.
-
-The connector also requests a PlayerLoop update whenever a CLI request arrives. No Throttling is still recommended for the most responsive background behavior.
-
-## Quick Start
+## 快速开始
 
 ```bash
-# Check Unity connection
+# 查看连接状态
 unity-cli status
 
-# Enter play mode and wait
+# 进入 Play Mode 并等待完成
 unity-cli editor play --wait
 
-# Run C# code inside Unity
+# 在 Editor 内执行 C#
 unity-cli exec "return Application.dataPath;"
 
-# Read console logs
+# 读取 Console
 unity-cli console --type error,warning,log
 ```
 
-## How It Works
+## 工作原理
 
-```
-Terminal                              Unity Editor
-────────                              ────────────
-$ unity-cli editor play --wait
-    │
-    ├─ scans ~/.unity-cli/instances/*.json
-    │  → selects the Unity instance for this project
-    │
-    ├─ sends command to the selected Unity listener
-    │  { "command": "manage_editor",
-    │    "params": { "action": "play",
-    │                "wait_for_completion": true }}
-    │                                      │
-    │                                  HttpServer receives
-    │                                      │
-    │                                  CommandRouter dispatches
-    │                                      │
-    │                                  ManageEditor.HandleCommand()
-    │                                  → EditorApplication.isPlaying = true
-    │                                  → waits for PlayModeStateChange
-    │                                      │
-    ├─ receives JSON response  ←───────────┘
-    │  { "success": true,
-    │    "message": "Entered play mode (confirmed)." }
-    │
-    └─ prints: Entered play mode (confirmed).
-```
-
-The Unity Connector:
-1. Opens a local HTTP listener when the Editor starts
-2. Writes a per-project instance file to `~/.unity-cli/instances/` so the CLI knows where to connect
-3. Updates the instance file every 0.5s with the current state (heartbeat)
-4. Discovers all `[UnityCliTool]` classes via reflection on each request
-5. Routes incoming commands to the matching handler on the main thread
-6. Survives domain reloads (script recompilation)
-
-Before compiling or reloading, the Connector records the state (`compiling`, `reloading`) to the instance file. When the main thread freezes, the timestamp stops updating. The CLI detects this and waits for a fresh timestamp before sending commands.
-
-## Built-in Commands
-
-| Command | Description |
-|---------|-------------|
-| `editor` | Play/stop/pause/refresh the Unity Editor |
-| `console` | Read, filter, and clear console logs |
-| `exec` | Run arbitrary C# code inside Unity |
-| `test` | Run EditMode/PlayMode tests |
-| `menu` | Execute any Unity menu item by path |
-| `reserialize` | Re-serialize assets through Unity's serializer |
-| `screenshot` | Capture scene/game view as PNG |
-| `profiler` | Read profiler hierarchy, control recording |
-| `list` | Show all available tools with parameter schemas |
-| `status` | Show Unity Editor connection state |
-| `setup` | Install or update the Connector in the current Unity project |
-| `skills` | List or read agent guidance embedded in the CLI |
-| `update` | Self-update the CLI binary |
-
-### Editor Control
-
-```bash
-# Enter play mode
-unity-cli editor play
-
-# Enter play mode and wait until fully loaded
+```text
+终端                                      Unity Editor
 unity-cli editor play --wait
-
-# Stop play mode
-unity-cli editor stop
-
-# Toggle pause (only works during play mode)
-unity-cli editor pause
-
-# Refresh assets (blocked in play mode unless --force is set)
-unity-cli editor refresh
-
-# Refresh and recompile scripts (also blocked in play mode unless --force is set)
-unity-cli editor refresh --compile
-
-# Force refresh while in play mode
-unity-cli editor refresh --force
+  │
+  ├─ 扫描 ~/.unity-cli/instances/*.json
+  ├─ 按当前目录或 --project 选择实例
+  ├─ 向本机 Connector 发送命令 ────────────→ CommandRouter
+  │                                           │
+  │                                      主线程执行工具
+  │                                           │
+  └─ 输出 JSON 响应 ←─────────────────────────┘
 ```
 
-### Console Logs
+Connector 会：
 
-```bash
-# Read error and warning logs (default)
-unity-cli console
+1. 在 Editor 启动时打开本机 HTTP 监听。
+2. 为每个项目写入独立的 instance 文件。
+3. 每 0.5 秒更新 Editor 状态与心跳。
+4. 通过反射发现内置及项目自定义的 `[UnityCliTool]`。
+5. 在 Unity 主线程分发需要访问 Editor API 的命令。
+6. 在脚本编译和 Domain Reload 后自动恢复。
 
-# Read last 20 log entries of all types
-unity-cli console --lines 20 --filter error,warning,log
+CLI 在发送命令前会检查心跳。Unity 正在编译或重载时，CLI 会等待 Editor 恢复响应。
 
-# Read only errors
-unity-cli console --type error
+## 命令概览
 
-# Include stack traces (user: user code only, full: raw)
-unity-cli console --stacktrace user
+| 命令 | 说明 |
+|---|---|
+| `setup` | 在当前 Unity 项目安装或更新 Connector |
+| `status` | 查看 Unity Editor 连接状态 |
+| `editor` | 控制播放、停止、暂停、刷新和编译 |
+| `console` | 读取、筛选或清空 Console 日志 |
+| `exec` | 在 Unity Editor 内执行 C# |
+| `menu` | 按路径执行 Unity 菜单项 |
+| `screenshot` | 截取 Scene View 或 Game View |
+| `reserialize` | 通过 Unity Serializer 重新序列化资源 |
+| `test` | 运行 EditMode 或 PlayMode 测试 |
+| `profiler` | 读取 Profiler 层级并控制录制 |
+| `list` | 列出内置和项目自定义工具及参数 |
+| `skills` | 查看 CLI 内嵌的 Agent 使用指南 |
+| `update` | 检查或安装最新 CLI 版本 |
 
-# Clear console
-unity-cli console --clear
-```
-
-### Execute C# Code
-
-Run arbitrary C# code inside the Unity Editor at runtime. This is the most powerful command — it gives you full access to UnityEngine, UnityEditor, ECS, and every loaded assembly. No need to write a custom tool for one-off queries or mutations.
-
-Use `return` to get output. Common namespaces are included by default. Add `--usings` only for project-specific types (e.g. `Unity.Entities`). `--usings` accepts comma-separated namespaces and can be repeated. Because both `System` and `UnityEngine` are imported, spell Unity's base object as `UnityEngine.Object`; `Object` is ambiguous and `Unity.Object` does not exist. The csc compiler and dotnet runtime are auto-detected; if detection fails, specify manually with `--csc <path>` or `--dotnet <path>`.
-
-```bash
-unity-cli exec "return Application.dataPath;"
-unity-cli exec "return EditorSceneManager.GetActiveScene().name;"
-unity-cli exec "return UnityEngine.Object.FindObjectsOfType<Camera>().Length;"
-unity-cli exec "return World.All.Count;" --usings Unity.Entities
-unity-cli exec "return World.All.Count;" --usings Unity.Entities --usings Unity.Mathematics
-
-# Pipe via stdin to avoid shell escaping issues
-echo 'Debug.Log("hello"); return null;' | unity-cli exec
-echo 'var go = new GameObject("Marker"); go.tag = "EditorOnly"; return go.name;' | unity-cli exec
-```
-
-`exec` blocks async, coroutine, and deferred Unity callback keywords by default because the command returns before those paths complete. Use `--allow-async` only when that delayed behavior is intentional.
-
-Because `exec` compiles and runs real C#, it can do anything a custom tool can — inspect ECS entities, modify assets, call internal APIs, run editor utilities. For AI agents, this means **zero-friction access to Unity's entire runtime** without writing a single line of tool code. Piping via stdin avoids shell escaping headaches with complex code.
-
-### Menu Items
-
-```bash
-# Execute any Unity menu item by path
-unity-cli menu "File/Save Project"
-unity-cli menu "Assets/Refresh"
-unity-cli menu "Window/General/Console"
-```
-
-Note: `File/Quit` is blocked for safety.
-
-### Asset Reserialize
-
-AI agents (and humans) can edit Unity asset files — `.prefab`, `.unity`, `.asset`, `.mat` — as plain text YAML. But Unity's YAML serializer is strict: a missing field, wrong indent, or stale `fileID` will corrupt the asset silently.
-
-`reserialize` fixes this. After a text edit, it tells Unity to load the asset into memory and write it back out through its own serializer. The result is a clean, valid YAML file — as if you had edited it through the Inspector.
-
-```bash
-# Reserialize the entire project (no arguments)
-unity-cli reserialize
-
-# After editing a prefab's transform values in a text editor
-unity-cli reserialize Assets/Prefabs/Player.prefab
-
-# After batch-editing multiple scenes
-unity-cli reserialize Assets/Scenes/Main.unity Assets/Scenes/Lobby.unity
-
-# After modifying material properties
-unity-cli reserialize Assets/Materials/Character.mat
-```
-
-This is what makes text-based asset editing safe. Without it, a single misplaced YAML field can break a prefab with no visible error until runtime. With it, **AI agents can confidently modify any Unity asset through plain text** — add components to prefabs, adjust scene hierarchies, change material properties — and know the result will load correctly.
-
-### Profiler
-
-```bash
-# Read profiler hierarchy (last frame, top-level)
-unity-cli profiler hierarchy
-
-# Recursive drill-down
-unity-cli profiler hierarchy --depth 3
-
-# Set root by name (substring match) — focus on a specific system
-unity-cli profiler hierarchy --root SimulationSystem --depth 3
-
-# Drill into a specific item by ID
-unity-cli profiler hierarchy --parent 4 --depth 2
-
-# Average over last 30 frames
-unity-cli profiler hierarchy --frames 30 --min 0.5
-
-# Average over a specific frame range
-unity-cli profiler hierarchy --from 100 --to 200
-
-# Filter and sort
-unity-cli profiler hierarchy --min 0.5 --sort self --max 10
-
-# Enable/disable profiler recording
-unity-cli profiler enable
-unity-cli profiler disable
-
-# Show profiler state
-unity-cli profiler status
-
-# Clear captured frames
-unity-cli profiler clear
-```
-
-### Run Tests
-
-Run EditMode and PlayMode tests via the Unity Test Framework.
-
-```bash
-# Run EditMode tests (default)
-unity-cli test
-
-# Run PlayMode tests
-unity-cli test --mode PlayMode
-
-# Filter by test name (substring match)
-unity-cli test --filter MyTestClass
-```
-
-Requires the Unity Test Framework package. PlayMode tests trigger a domain reload; the CLI polls for results automatically.
-
-### List Tools
-
-```bash
-# Show all available tools (built-in + project custom) with parameter schemas
-unity-cli list
-```
-
-### Custom Tools
-
-```bash
-# Call a custom tool directly by name
-unity-cli my_custom_tool
-
-# Call with parameters
-unity-cli my_custom_tool --params '{"key": "value"}'
-```
-
-### Status
-
-```bash
-# Show Unity Editor state
-unity-cli status
-# Output: Unity: ready
-#   Project: /path/to/project
-#   Version: 6000.1.0f1
-#   PID:     12345
-```
-
-The CLI also checks Unity's state automatically before sending any command. If Unity is busy (compiling, reloading), it waits for Unity to become responsive.
-
-## Global Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--project <path>` | Select Unity instance by project path | auto |
-| `--timeout <ms>` | HTTP request timeout | 120000 |
-| `--ignore-version-mismatch` | Skip CLI/connector version check | false |
-
-```bash
-# Select by project path when multiple Unity instances are open
-unity-cli --project MyGame editor stop
-
-# Run even when the CLI and connector versions differ
-unity-cli --ignore-version-mismatch status
-```
-
-Use `--help` on any command for detailed usage:
+任何命令都可以使用 `--help` 查看完整参数：
 
 ```bash
 unity-cli editor --help
@@ -397,30 +166,153 @@ unity-cli exec --help
 unity-cli profiler --help
 ```
 
-## Writing Custom Tools
+## Editor 控制
 
-Create a static class with `[UnityCliTool]` attribute in any Editor assembly. The Connector discovers it automatically on domain reload.
+```bash
+# 进入播放模式
+unity-cli editor play
+
+# 进入播放模式并等待完成
+unity-cli editor play --wait
+
+# 停止、暂停或恢复
+unity-cli editor stop
+unity-cli editor pause
+
+# 刷新资源
+unity-cli editor refresh
+
+# 刷新并等待脚本编译完成
+unity-cli editor refresh --compile
+
+# 在 Play Mode 中强制刷新
+unity-cli editor refresh --force
+```
+
+## Console 日志
+
+```bash
+# 读取日志
+unity-cli console
+
+# 限制数量和类型
+unity-cli console --lines 20 --type error,warning,log
+
+# 只读取错误并包含用户代码堆栈
+unity-cli console --type error --stacktrace user
+
+# 清空 Console
+unity-cli console --clear
+```
+
+`--stacktrace` 支持 `none`、`user` 和 `full`。
+
+## 执行 C#
+
+`exec` 可以访问 `UnityEngine`、`UnityEditor`、项目程序集以及已经加载的其他程序集。
+使用 `return` 返回结果；没有返回值的修改以 `return null;` 结束。
+
+```bash
+unity-cli exec "return Application.dataPath;"
+unity-cli exec "return EditorSceneManager.GetActiveScene().name;"
+unity-cli exec "return UnityEngine.Object.FindObjectsOfType<Camera>().Length;"
+
+# 添加项目命名空间，可以重复指定 --usings
+unity-cli exec "return World.All.Count;" --usings Unity.Entities --usings Unity.Mathematics
+
+# 多语句代码建议通过 stdin 传入，避免 Shell 转义问题
+echo 'Debug.Log("hello"); return null;' | unity-cli exec
+```
+
+注意：
+
+- 默认已经导入 `System` 和 `UnityEngine`，因此必须写 `UnityEngine.Object`；单独的
+  `Object` 存在歧义，`Unity.Object` 类型不存在。
+- 不要在代码字符串内写 `using`，请使用 `--usings`。
+- 异步、协程和延迟回调默认被阻止，因为命令返回时它们可能尚未完成。仅在明确需要时使用
+  `--allow-async`。
+- 编译器和 dotnet runtime 默认自动发现，必要时可传入 `--csc` 和 `--dotnet`。
+
+## 菜单与截图
+
+```bash
+unity-cli menu "File/Save Project"
+unity-cli menu "Assets/Refresh"
+
+unity-cli screenshot
+unity-cli screenshot --view game
+unity-cli screenshot --output_path captures/game.png --width 1920 --height 1080
+```
+
+出于安全考虑，`menu` 不允许执行 `File/Quit`。
+
+## 重新序列化资源
+
+直接修改 `.prefab`、`.unity`、`.asset` 或 `.mat` YAML 后，可以让 Unity 重新加载并使用
+自身 Serializer 写回，降低错误缩进、过期 `fileID` 或字段格式导致资源损坏的风险。
+
+```bash
+# 整个项目
+unity-cli reserialize
+
+# 指定一个或多个资源
+unity-cli reserialize Assets/Prefabs/Player.prefab
+unity-cli reserialize Assets/Scenes/Main.unity Assets/Scenes/Lobby.unity
+```
+
+## Profiler
+
+```bash
+unity-cli profiler hierarchy
+unity-cli profiler hierarchy --depth 3
+unity-cli profiler hierarchy --root SimulationSystem --depth 3
+unity-cli profiler hierarchy --parent 4 --depth 2
+unity-cli profiler hierarchy --frames 30 --min 0.5
+unity-cli profiler hierarchy --from 100 --to 200
+unity-cli profiler hierarchy --min 0.5 --sort self --max 10
+
+unity-cli profiler enable
+unity-cli profiler disable
+unity-cli profiler status
+unity-cli profiler clear
+```
+
+## 测试
+
+项目需要安装 Unity Test Framework：
+
+```bash
+# EditMode
+unity-cli test
+
+# PlayMode
+unity-cli test --mode PlayMode
+
+# 按完整测试名称筛选
+unity-cli test --filter MyNamespace.MyTests.SpecificTest
+```
+
+PlayMode 测试可能触发 Domain Reload，CLI 会自动轮询结果文件。
+
+## 自定义工具
+
+在项目的 Editor Assembly 中创建带 `[UnityCliTool]` 的静态类。Connector 会在 Domain
+Reload 后自动发现，无需修改 Go CLI。
 
 ```csharp
 using UnityCliConnector;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-[UnityCliTool(Name = "spawn", Description = "Spawn an enemy at a position", Group = "gameplay")]
+[UnityCliTool(Name = "spawn", Description = "Spawn an enemy", Group = "gameplay")]
 public static class SpawnEnemy
 {
     public class Parameters
     {
-        [ToolParameter("X world position", Required = true)]
+        [ToolParameter("X position", Required = true)]
         public float X { get; set; }
 
-        [ToolParameter("Y world position", Required = true)]
-        public float Y { get; set; }
-
-        [ToolParameter("Z world position", Required = true)]
-        public float Z { get; set; }
-
-        [ToolParameter("Prefab name in Resources folder", DefaultValue = "Enemy")]
+        [ToolParameter("Prefab name", DefaultValue = "Enemy")]
         public string Prefab { get; set; }
     }
 
@@ -428,94 +320,109 @@ public static class SpawnEnemy
     {
         var p = new ToolParams(parameters);
         float x = p.GetFloat("x", 0);
-        float y = p.GetFloat("y", 0);
-        float z = p.GetFloat("z", 0);
         string prefabName = p.Get("prefab", "Enemy");
 
         var prefab = Resources.Load<GameObject>(prefabName);
-        var instance = Object.Instantiate(prefab, new Vector3(x, y, z), Quaternion.identity);
+        var instance = UnityEngine.Object.Instantiate(
+            prefab, new Vector3(x, 0, 0), Quaternion.identity);
 
-        return new SuccessResponse("Enemy spawned", new
-        {
-            name = instance.name,
-            position = new { x, y, z }
-        });
+        return new SuccessResponse("Enemy spawned", new { instance.name });
     }
 }
 ```
 
-Call it directly with flags or JSON:
+查看并调用：
 
 ```bash
-unity-cli spawn --x 1 --y 0 --z 5 --prefab Goblin
-unity-cli spawn --params '{"x":1,"y":0,"z":5,"prefab":"Goblin"}'
+unity-cli list
+unity-cli spawn --x 1 --prefab Enemy
+unity-cli spawn --params '{"x":1,"prefab":"Enemy"}'
 ```
 
-**Key points:**
+规则：
 
-- **Name**: without `Name`, auto-derived from class name (`SpawnEnemy` → `spawn_enemy`, `UITree` → `ui_tree`). With `Name = "spawn"`, the command becomes `unity-cli spawn`.
-- **Parameters class**: optional but recommended. `unity-cli list` uses it to expose parameter names, types, descriptions, and required flags — so AI assistants can discover your tool without reading the source.
-- **ToolParams**: use `p.Get()`, `p.GetInt()`, `p.GetFloat()`, `p.GetBool()`, `p.GetRaw()` for consistent param reading.
-- **Discovery**: `unity-cli list` shows built-in tools first (`group: "built-in"`), then custom tools (`group: "custom"`) detected from the connected Unity project.
+- 类必须是 `static`。
+- 入口必须是 `public static object HandleCommand(JObject parameters)`，也支持
+  `async Task<object>` 变体。
+- 返回 `SuccessResponse` 或 `ErrorResponse`。
+- 嵌套 `Parameters` 类不是必需的，但建议使用，以便 `unity-cli list` 暴露参数 schema。
+- 未指定 `Name` 时，类名会自动转为 snake_case。
+- 工具在 Unity 主线程执行，可以访问 Editor API。
+- 重名工具只注册第一个，并在 Console 中报告错误。
 
-**Attribute reference:**
+常用属性：
 
-| Attribute | Property | Description |
+| Attribute | 属性 | 说明 |
 |---|---|---|
-| `[UnityCliTool]` | `Name` | Command name override (default: class name → snake_case) |
-| | `Description` | Tool description shown in `list` |
-| | `Group` | Group name for categorization |
-| `[ToolParameter]` | `Description` | Parameter description (constructor arg) |
-| | `Required` | Whether the parameter is required (default: `false`) |
-| | `Name` | Parameter name override |
-| | `DefaultValue` | Default value hint |
+| `[UnityCliTool]` | `Name` | 覆盖命令名 |
+| `[UnityCliTool]` | `Description` | 工具说明 |
+| `[UnityCliTool]` | `Group` | 工具分组 |
+| `[ToolParameter]` | `Description` | 参数说明 |
+| `[ToolParameter]` | `Required` | 是否必填 |
+| `[ToolParameter]` | `Name` | 覆盖参数名 |
+| `[ToolParameter]` | `DefaultValue` | 默认值提示 |
 
-### Rules
+## 多 Unity 实例
 
-- Class must be `static`
-- Must have `public static object HandleCommand(JObject parameters)` or `async Task<object>` variant
-- Return `SuccessResponse(message, data)` or `ErrorResponse(message)`
-- Add a `Parameters` nested class with `[ToolParameter]` attributes for discoverability
-- Class name is auto-converted to snake_case for the command name
-- Override with `[UnityCliTool(Name = "my_name")]` if needed
-- Runs on Unity main thread, so all Unity APIs are safe to call
-- Discovered automatically on Editor start and after every script recompilation
-- Duplicate tool names are detected and logged as errors — only the first discovered handler is used
-
-## Multiple Unity Instances
-
-When multiple Unity Editors are open, each registers its project path:
+每个打开的 Unity 项目都会注册独立实例。默认优先匹配当前工作目录中的项目；无法唯一匹配时，
+使用全局 `--project`：
 
 ```bash
-# See all running instances
 unity-cli status
-
-# Select by project path
-unity-cli --project MyGame editor play
-
-# Default: uses the current working directory's Unity project, or the only active instance
-unity-cli editor play
+unity-cli --project /path/to/MyGame editor play
 ```
 
-## Compared to MCP
+全局参数：
 
-| | MCP | unity-cli |
-|---|-----|-----------|
-| **Install** | Python + uv + FastMCP + config JSON | Single binary |
-| **Dependencies** | Python runtime, WebSocket relay | None |
-| **Protocol** | JSON-RPC 2.0 over stdio + WebSocket | Direct HTTP POST |
-| **Setup** | Generate MCP config, restart AI tool | Add Unity package, done |
-| **Reconnection** | Complex reconnect logic for domain reloads | Stateless per request |
-| **Client support** | MCP client setup only | Anything with a shell |
-| **Custom tools** | Same `[Attribute]` + `HandleCommand` pattern | Same |
+| 参数 | 说明 | 默认值 |
+|---|---|---|
+| `--project <path>` | 按项目路径选择 Unity 实例 | 自动选择 |
+| `--timeout <ms>` | 命令超时时间 | `120000` |
+| `--ignore-version-mismatch` | 跳过 CLI/Connector 版本检查 | `false` |
 
-## Author
+## Agent Skill
 
-Created by **DevBookOfArray**
+安装仓库提供的 Agent Skill：
 
-[![YouTube](https://img.shields.io/badge/YouTube-DevBookOfArray-red?logo=youtube&logoColor=white)](https://www.youtube.com/@DevBookOfArray)
-[![GitHub](https://img.shields.io/badge/GitHub-youngwoocho02-181717?logo=github)](https://github.com/youngwoocho02)
+```bash
+npx skills add ikws4/unity-cli -y -g
+```
+
+CLI 二进制中也内嵌了同一份说明，可以直接读取：
+
+```bash
+unity-cli skills list
+unity-cli skills read unity-cli
+```
+
+## 更新
+
+```bash
+unity-cli update --check
+unity-cli update
+```
+
+更新命令从 `github.com/ikws4/unity-cli` 的最新 GitHub Release 下载当前平台的二进制。
+
+## 开发与验证
+
+```bash
+make build
+make test
+
+go clean -testcache
+gofmt -w .
+golangci-lint run ./...
+golangci-lint fmt --diff
+go test ./...
+```
+
+需要打开 Unity Editor 的集成测试：
+
+```bash
+go test -tags integration ./...
+```
 
 ## License
 
-MIT
+[MIT](LICENSE)

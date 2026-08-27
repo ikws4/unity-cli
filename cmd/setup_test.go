@@ -90,7 +90,7 @@ func TestRunSetupInstallsVersionedConnector(t *testing.T) {
 }
 
 func TestRunSetupUpdatesExistingConnector(t *testing.T) {
-	root := createUnityProject(t, `{"dependencies":{"com.youngwoocho02.unity-cli-connector":"old"}}`)
+	root := createUnityProject(t, `{"dependencies":{"com.ikws4.unity-cli-connector":"old"}}`)
 
 	var out strings.Builder
 	if err := runSetup(root, "0.4.0", &out); err != nil {
@@ -108,7 +108,7 @@ func TestRunSetupUpdatesExistingConnector(t *testing.T) {
 
 func TestRunSetupIsIdempotent(t *testing.T) {
 	wantURL := connectorPackageURL + "#v0.3.22"
-	root := createUnityProject(t, `{"dependencies":{"com.youngwoocho02.unity-cli-connector":"`+wantURL+`"}}`)
+	root := createUnityProject(t, `{"dependencies":{"com.ikws4.unity-cli-connector":"`+wantURL+`"}}`)
 	manifestPath := filepath.Join(root, "Packages", "manifest.json")
 	before, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -127,6 +127,26 @@ func TestRunSetupIsIdempotent(t *testing.T) {
 		t.Fatalf("idempotent setup rewrote manifest:\nbefore: %s\nafter: %s", before, after)
 	}
 	if !strings.Contains(out.String(), "already configured") {
+		t.Fatalf("output = %q", out.String())
+	}
+}
+
+func TestRunSetupMigratesLegacyConnector(t *testing.T) {
+	root := createUnityProject(t, `{"dependencies":{"com.youngwoocho02.unity-cli-connector":"old"}}`)
+
+	var out strings.Builder
+	if err := runSetup(root, "v0.4.0", &out); err != nil {
+		t.Fatalf("runSetup: %v", err)
+	}
+
+	dependencies := manifestDependencies(t, readManifest(t, root))
+	if _, exists := dependencies[legacyConnectorPackageName]; exists {
+		t.Fatalf("legacy connector dependency was not removed: %+v", dependencies)
+	}
+	if got, want := dependencies[connectorPackageName], connectorPackageURL+"#v0.4.0"; got != want {
+		t.Fatalf("connector dependency = %q, want %q", got, want)
+	}
+	if !strings.Contains(out.String(), "Updated Unity CLI Connector") {
 		t.Fatalf("output = %q", out.String())
 	}
 }

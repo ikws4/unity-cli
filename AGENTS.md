@@ -59,7 +59,7 @@ CI skips these since Unity is not available.
 CLI option, command, parameter를 수정하면 관련된 모든 곳을 함께 반영한다:
 - C# tool (Parameters class, HandleCommand)
 - Go help text (root.go의 overview + command별 detailed help)
-- README.md, README.ko.md
+- README.md
 
 ### 버전 관리
 

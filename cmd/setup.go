@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	connectorPackageName = "com.youngwoocho02.unity-cli-connector"
-	connectorPackageURL  = "https://github.com/youngwoocho02/unity-cli.git?path=unity-connector"
+	connectorPackageName       = "com.ikws4.unity-cli-connector"
+	legacyConnectorPackageName = "com.youngwoocho02.unity-cli-connector"
+	connectorPackageURL        = "https://github.com/ikws4/unity-cli.git?path=unity-connector"
 )
 
 func setupCmd(args []string) error {
@@ -57,11 +58,13 @@ func runSetup(projectRoot, version string, out io.Writer) error {
 
 	desired := connectorURLForVersion(version)
 	current, exists := dependencies[connectorPackageName]
-	if exists && current == desired {
+	_, legacyExists := dependencies[legacyConnectorPackageName]
+	if exists && current == desired && !legacyExists {
 		_, err := fmt.Fprintf(out, "Unity CLI Connector is already configured in Packages/manifest.json:\n  %s\n", desired)
 		return err
 	}
 
+	delete(dependencies, legacyConnectorPackageName)
 	dependencies[connectorPackageName] = desired
 	encodedDependencies, err := json.Marshal(dependencies)
 	if err != nil {
@@ -79,7 +82,7 @@ func runSetup(projectRoot, version string, out io.Writer) error {
 	}
 
 	action := "Installed"
-	if exists {
+	if exists || legacyExists {
 		action = "Updated"
 	}
 	if _, err := fmt.Fprintf(out, "%s Unity CLI Connector in Packages/manifest.json:\n  %s\n", action, desired); err != nil {

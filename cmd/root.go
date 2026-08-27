@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/youngwoocho02/unity-cli/internal/client"
+	"github.com/ikws4/unity-cli/internal/client"
 )
 
 var Version = "dev"
@@ -884,7 +884,10 @@ Rules:
 		fmt.Print(`Installation and Unity setup
 
 CLI Installation:
-  git clone https://github.com/youngwoocho02/unity-cli.git
+  go install github.com/ikws4/unity-cli@latest
+
+Source installation:
+  git clone https://github.com/ikws4/unity-cli.git
   cd unity-cli
   make install
 
@@ -900,7 +903,7 @@ AI Agent Skill:
 
 Unity Setup:
   1. Window → Package Manager → + → Add package from git URL
-  2. Paste: https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
+  2. Paste: https://github.com/ikws4/unity-cli.git?path=unity-connector
   The Connector supports Unity 2022.3+ and starts automatically when Unity opens.
 
 Verify:
