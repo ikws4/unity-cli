@@ -22,31 +22,39 @@ The entire CLI is ~800 lines of Go (plus ~300 lines of help text). The Unity-sid
 
 ## Install
 
-### Linux / macOS
+Clone the repository and install from the project directory:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.sh | sh
+git clone https://github.com/youngwoocho02/unity-cli.git
+cd unity-cli
+make install
 ```
 
-### Windows (PowerShell)
+`make install` uses Go's standard binary directory: `GOBIN` when set, otherwise the first `GOPATH/bin` directory.
 
-```powershell
-irm https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.ps1 | iex
-```
-
-### Other options
+To inspect the resolved Go directories:
 
 ```bash
-# Go install (any platform with Go)
-go install github.com/youngwoocho02/unity-cli@latest
-
-# Manual download (pick your platform)
-# Linux amd64 / Linux arm64 / macOS amd64 / macOS arm64 / Windows amd64
-curl -fsSL https://github.com/youngwoocho02/unity-cli/releases/latest/download/unity-cli-linux-amd64 -o unity-cli
-chmod +x unity-cli && sudo mv unity-cli /usr/local/bin/
+go env GOBIN GOPATH
 ```
 
-Supported platforms: Linux (amd64, arm64), macOS (Intel, Apple Silicon), Windows (amd64).
+If the command is not found afterward, add Go's bin directory to `PATH`:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
+Verify the installation:
+
+```bash
+unity-cli version
+```
+
+To install into a system directory:
+
+```bash
+sudo env GOBIN=/usr/local/bin make install
+```
 
 ### AI Agent Skill
 
@@ -75,7 +83,18 @@ unity-cli update --check
 
 ## Unity Setup
 
-Add the Unity Connector package via **Package Manager → Add package from git URL**:
+From the Unity project root, install the Connector dependency with:
+
+```bash
+cd /path/to/MyUnityProject
+unity-cli setup
+```
+
+The command validates the current directory, then adds the Connector to
+`Packages/manifest.json`. Release builds pin the package to the matching CLI version, and
+re-running the command updates an older entry or leaves an identical entry unchanged.
+
+Alternatively, add the Unity Connector package via **Package Manager → Add package from git URL**:
 
 ```
 https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
@@ -169,6 +188,7 @@ Before compiling or reloading, the Connector records the state (`compiling`, `re
 | `profiler` | Read profiler hierarchy, control recording |
 | `list` | Show all available tools with parameter schemas |
 | `status` | Show Unity Editor connection state |
+| `setup` | Install or update the Connector in the current Unity project |
 | `skills` | List or read agent guidance embedded in the CLI |
 | `update` | Self-update the CLI binary |
 

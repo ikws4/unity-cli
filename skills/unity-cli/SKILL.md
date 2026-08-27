@@ -15,6 +15,9 @@ unity-cli status
 unity-cli list
 ```
 
+If the Connector is not installed yet, run `unity-cli setup` from the Unity project root. The
+command adds the matching Connector dependency to `Packages/manifest.json`.
+
 When multiple Editors are open, pass the project explicitly with the global `--project <path>` option.
 
 ## Execute C# safely

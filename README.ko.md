@@ -22,31 +22,39 @@ CLI 전체가 Go ~800줄(+ help text ~300줄), Unity 커넥터가 C# ~2,300줄�
 
 ## 설치
 
-### Linux / macOS
+저장소를 복제한 후 프로젝트 디렉터리에서 설치합니다:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.sh | sh
+git clone https://github.com/youngwoocho02/unity-cli.git
+cd unity-cli
+make install
 ```
 
-### Windows (PowerShell)
+`make install`은 Go의 표준 바이너리 디렉터리를 사용합니다. `GOBIN`이 설정되어 있으면 `GOBIN`에, 아니면 첫 번째 `GOPATH/bin` 디렉터리에 설치합니다.
 
-```powershell
-irm https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.ps1 | iex
-```
-
-### 기타 방법
+실제 Go 디렉터리를 확인하려면:
 
 ```bash
-# Go install (Go가 설치된 모든 플랫폼)
-go install github.com/youngwoocho02/unity-cli@latest
-
-# 수동 다운로드 (플랫폼 선택)
-# Linux amd64 / Linux arm64 / macOS amd64 / macOS arm64 / Windows amd64
-curl -fsSL https://github.com/youngwoocho02/unity-cli/releases/latest/download/unity-cli-linux-amd64 -o unity-cli
-chmod +x unity-cli && sudo mv unity-cli /usr/local/bin/
+go env GOBIN GOPATH
 ```
 
-지원 플랫폼: Linux (amd64, arm64), macOS (Intel, Apple Silicon), Windows (amd64).
+설치 후 명령어를 찾을 수 없다면 Go의 bin 디렉터리를 `PATH`에 추가하세요:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
+설치를 확인합니다:
+
+```bash
+unity-cli version
+```
+
+시스템 디렉터리에 설치하려면:
+
+```bash
+sudo env GOBIN=/usr/local/bin make install
+```
 
 ### AI 에이전트 Skill
 
@@ -75,7 +83,18 @@ unity-cli update --check
 
 ## Unity 설정
 
-**Package Manager → Add package from git URL**에서 추가:
+Unity 프로젝트 루트에서 Connector 의존성을 설치하세요:
+
+```bash
+cd /path/to/MyUnityProject
+unity-cli setup
+```
+
+이 명령은 현재 디렉터리가 Unity 프로젝트 루트인지 확인한 후
+`Packages/manifest.json`에 Connector를 추가합니다. 릴리스 빌드는 CLI와 같은 버전으로
+패키지를 고정하며, 다시 실행하면 이전 항목을 업데이트하거나 동일한 항목을 그대로 둡니다.
+
+또는 **Package Manager → Add package from git URL**에서 직접 추가할 수 있습니다:
 
 ```
 https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
@@ -169,6 +188,7 @@ Unity 커넥터의 동작:
 | `profiler` | 프로파일러 하이어라키 읽기, 녹화 제어 |
 | `list` | 사용 가능한 모든 도구와 파라미터 스키마 표시 |
 | `status` | Unity Editor 연결 상태 확인 |
+| `setup` | 현재 Unity 프로젝트에 Connector 설치 또는 업데이트 |
 | `skills` | CLI에 내장된 에이전트 안내 목록 조회 및 읽기 |
 | `update` | CLI 바이너리 자동 업데이트 |
 

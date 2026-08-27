@@ -70,6 +70,11 @@ func Execute() error {
 		return nil
 	case "update":
 		return updateCmd(subArgs)
+	case "setup":
+		if flagProject != "" {
+			return fmt.Errorf("setup must be run from the Unity project root; --project is not supported")
+		}
+		return setupCmd(subArgs)
 	case "skills":
 		return skillsCmd(subArgs)
 	case "status":
@@ -593,6 +598,9 @@ Update:
   update                        Update to the latest version
   update --check                Check for updates without installing
 
+Setup:
+  setup                         Install the Connector in the current Unity project
+
 Agent Skills:
   skills list                   List agent guidance embedded in this binary
   skills read unity-cli         Read the unity-cli agent skill
@@ -808,6 +816,17 @@ Examples:
   unity-cli update
   unity-cli update --check
 `)
+	case "setup":
+		fmt.Print(`Usage: unity-cli setup
+
+Install or update the Unity CLI Connector dependency in Packages/manifest.json.
+Run this command from the Unity project root. A release build pins the Connector
+to the matching CLI version; a development build uses the repository's default branch.
+
+Example:
+  cd /path/to/MyUnityProject
+  unity-cli setup
+`)
 	case "skills":
 		fmt.Print(`Usage: unity-cli skills <list|read> [skill[/path]]
 
@@ -861,18 +880,19 @@ Rules:
   - Discovered on Editor start and after every script recompilation
   - Duplicate tool names are detected and logged as errors (first wins)
 `)
-	case "setup", "install":
+	case "install":
 		fmt.Print(`Installation and Unity setup
 
 CLI Installation:
-  # Linux / macOS
-  curl -fsSL https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.sh | sh
+  git clone https://github.com/youngwoocho02/unity-cli.git
+  cd unity-cli
+  make install
 
-  # Windows (PowerShell)
-  irm https://raw.githubusercontent.com/youngwoocho02/unity-cli/master/install.ps1 | iex
+make install uses GOBIN when set, otherwise GOPATH/bin.
+Inspect the resolved directories with: go env GOBIN GOPATH
 
-  # Go install (any platform)
-  go install github.com/youngwoocho02/unity-cli@latest
+System-wide installation:
+  sudo env GOBIN=/usr/local/bin make install
 
 AI Agent Skill:
   npx skills add ikws4/unity-cli -y -g
