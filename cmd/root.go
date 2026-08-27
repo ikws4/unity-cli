@@ -70,6 +70,8 @@ func Execute() error {
 		return nil
 	case "update":
 		return updateCmd(subArgs)
+	case "skills":
+		return skillsCmd(subArgs)
 	case "status":
 		statusErr := statusCmd(flagProject, flagIgnoreVersionMismatch)
 		printUpdateNotice()
@@ -591,6 +593,10 @@ Update:
   update                        Update to the latest version
   update --check                Check for updates without installing
 
+Agent Skills:
+  skills list                   List agent guidance embedded in this binary
+  skills read unity-cli         Read the unity-cli agent skill
+
 Global Options:
   --project <path>    Select Unity instance by project path
   --timeout <ms>      Request timeout in ms (default: 120000)
@@ -681,6 +687,7 @@ Stdin:
 
 Notes:
   - Use 'return' for output, 'return null;' for void operations
+  - Use UnityEngine.Object explicitly; Object is ambiguous and Unity.Object does not exist
 `)
 	case "menu":
 		fmt.Print(`Usage: unity-cli menu "<path>"
@@ -801,6 +808,20 @@ Examples:
   unity-cli update
   unity-cli update --check
 `)
+	case "skills":
+		fmt.Print(`Usage: unity-cli skills <list|read> [skill[/path]]
+
+Read agent guidance embedded in the CLI binary so it stays in sync with
+the installed command behavior.
+
+Subcommands:
+  list [skill[/path]]        List skills or files under a skill directory
+  read <skill>[/<path>]      Print SKILL.md or another embedded skill file
+
+Examples:
+  unity-cli skills list
+  unity-cli skills read unity-cli
+`)
 	case "custom-tools", "custom", "tools":
 		fmt.Print(`How to write custom tools for unity-cli
 
@@ -853,10 +874,14 @@ CLI Installation:
   # Go install (any platform)
   go install github.com/youngwoocho02/unity-cli@latest
 
+AI Agent Skill:
+  npx skills add ikws4/unity-cli -y -g
+  # Or read the embedded copy: unity-cli skills read unity-cli
+
 Unity Setup:
   1. Window → Package Manager → + → Add package from git URL
   2. Paste: https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
-  The Connector starts automatically when Unity opens.
+  The Connector supports Unity 2022.3+ and starts automatically when Unity opens.
 
 Verify:
   unity-cli list

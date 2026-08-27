@@ -48,6 +48,21 @@ chmod +x unity-cli && sudo mv unity-cli /usr/local/bin/
 
 지원 플랫폼: Linux (amd64, arm64), macOS (Intel, Apple Silicon), Windows (amd64).
 
+### AI 에이전트 Skill
+
+에이전트가 CLI를 사용하기 전에 정확한 `exec` 규칙을 읽도록 저장소의 skill을 설치하세요:
+
+```bash
+npx skills add ikws4/unity-cli -y -g
+```
+
+동일한 skill이 CLI 바이너리에도 내장되므로 Node.js 없이 확인할 수 있습니다:
+
+```bash
+unity-cli skills list
+unity-cli skills read unity-cli
+```
+
 ### 업데이트
 
 ```bash
@@ -74,6 +89,7 @@ https://github.com/youngwoocho02/unity-cli.git?path=unity-connector
 특정 버전을 고정하려면 URL 끝에 태그를 추가하세요 (예: `#v0.2.21`).
 
 추가 후 Unity를 열면 커넥터가 자동으로 시작됩니다. 별도 설정 불필요.
+패키지는 Unity 2022.3 이상을 지원합니다.
 
 ### 권장: Editor 쓰로틀링 비활성화
 
@@ -153,6 +169,7 @@ Unity 커넥터의 동작:
 | `profiler` | 프로파일러 하이어라키 읽기, 녹화 제어 |
 | `list` | 사용 가능한 모든 도구와 파라미터 스키마 표시 |
 | `status` | Unity Editor 연결 상태 확인 |
+| `skills` | CLI에 내장된 에이전트 안내 목록 조회 및 읽기 |
 | `update` | CLI 바이너리 자동 업데이트 |
 
 ### Editor 제어
@@ -203,11 +220,12 @@ unity-cli console --clear
 
 가장 강력한 명령어입니다. Unity Editor 런타임에서 임의의 C# 코드를 실행합니다. UnityEngine, UnityEditor, ECS 및 로드된 모든 어셈블리에 접근 가능합니다. 일회성 조회나 수정을 위해 커스텀 도구를 만들 필요가 없습니다.
 
-`return`으로 결과를 받습니다. 주요 namespace는 기본 포함. 프로젝트 전용 타입(예: `Unity.Entities`)만 `--usings`로 추가합니다. `--usings`는 콤마로 여러 namespace를 받을 수 있고 반복 지정도 가능합니다.
+`return`으로 결과를 받습니다. 주요 namespace는 기본 포함. 프로젝트 전용 타입(예: `Unity.Entities`)만 `--usings`로 추가합니다. `--usings`는 콤마로 여러 namespace를 받을 수 있고 반복 지정도 가능합니다. `System`과 `UnityEngine`이 모두 기본 포함되므로 Unity의 기본 오브젝트 타입은 반드시 `UnityEngine.Object`로 적으세요. `Object`는 모호하고 `Unity.Object` 타입은 존재하지 않습니다.
 
 ```bash
 unity-cli exec "return Application.dataPath;"
 unity-cli exec "return EditorSceneManager.GetActiveScene().name;"
+unity-cli exec "return UnityEngine.Object.FindObjectsOfType<Camera>().Length;"
 unity-cli exec "return World.All.Count;" --usings Unity.Entities
 unity-cli exec "return World.All.Count;" --usings Unity.Entities --usings Unity.Mathematics
 

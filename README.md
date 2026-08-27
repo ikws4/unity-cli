@@ -48,6 +48,21 @@ chmod +x unity-cli && sudo mv unity-cli /usr/local/bin/
 
 Supported platforms: Linux (amd64, arm64), macOS (Intel, Apple Silicon), Windows (amd64).
 
+### AI Agent Skill
+
+Install the repository's agent skill so agents get the exact `exec` rules before using the CLI:
+
+```bash
+npx skills add ikws4/unity-cli -y -g
+```
+
+The same skill is embedded in every CLI binary and can be inspected without Node.js:
+
+```bash
+unity-cli skills list
+unity-cli skills read unity-cli
+```
+
 ### Update
 
 ```bash
@@ -74,6 +89,7 @@ Or add directly to `Packages/manifest.json`:
 To pin a specific version, append a tag to the URL (e.g. `#v0.2.21`).
 
 Once added, the Connector starts automatically when Unity opens. No configuration needed.
+The package supports Unity 2022.3 or newer.
 
 ### Recommended: Disable Editor Throttling
 
@@ -153,6 +169,7 @@ Before compiling or reloading, the Connector records the state (`compiling`, `re
 | `profiler` | Read profiler hierarchy, control recording |
 | `list` | Show all available tools with parameter schemas |
 | `status` | Show Unity Editor connection state |
+| `skills` | List or read agent guidance embedded in the CLI |
 | `update` | Self-update the CLI binary |
 
 ### Editor Control
@@ -203,11 +220,12 @@ unity-cli console --clear
 
 Run arbitrary C# code inside the Unity Editor at runtime. This is the most powerful command — it gives you full access to UnityEngine, UnityEditor, ECS, and every loaded assembly. No need to write a custom tool for one-off queries or mutations.
 
-Use `return` to get output. Common namespaces are included by default. Add `--usings` only for project-specific types (e.g. `Unity.Entities`). `--usings` accepts comma-separated namespaces and can be repeated. The csc compiler and dotnet runtime are auto-detected; if detection fails, specify manually with `--csc <path>` or `--dotnet <path>`.
+Use `return` to get output. Common namespaces are included by default. Add `--usings` only for project-specific types (e.g. `Unity.Entities`). `--usings` accepts comma-separated namespaces and can be repeated. Because both `System` and `UnityEngine` are imported, spell Unity's base object as `UnityEngine.Object`; `Object` is ambiguous and `Unity.Object` does not exist. The csc compiler and dotnet runtime are auto-detected; if detection fails, specify manually with `--csc <path>` or `--dotnet <path>`.
 
 ```bash
 unity-cli exec "return Application.dataPath;"
 unity-cli exec "return EditorSceneManager.GetActiveScene().name;"
+unity-cli exec "return UnityEngine.Object.FindObjectsOfType<Camera>().Length;"
 unity-cli exec "return World.All.Count;" --usings Unity.Entities
 unity-cli exec "return World.All.Count;" --usings Unity.Entities --usings Unity.Mathematics
 

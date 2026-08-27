@@ -3,7 +3,7 @@
   "version": "0.3.22",
   "displayName": "Unity CLI Connector",
   "description": "HTTP bridge for unity-cli. Receives CLI commands and dispatches to registered tool handlers.",
-  "unity": "6000.0",
+  "unity": "2022.3",
   "author": {
     "name": "DevBookOfArray",
     "url": "https://www.youtube.com/@DevBookOfArray"
